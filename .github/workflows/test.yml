@@ -1,0 +1,40 @@
+name: Maven Package upon a push 
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+      - 1.*
+      - develop
+  
+jobs:
+  
+  find-dockers:
+    runs-on: ubuntu-latest
+
+    outputs:
+      docker-matrix: ${{steps.set-matrix.outputs.find-dockers }}
+    steps:
+      - uses: actions/checkout@v2
+      - id: set-matrix
+        shell: bash
+        run: find . -type f -name Dockerfile
+  
+  build-dockers:
+    runs-on: ubuntu-latest
+    env:
+      NAMESPACE: ${{secrets.dev_namespace_docker_hub}}
+    needs: [find-dockers]
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{needs.find-dockers.outputs.docker-matrix}}
+    name: "docker"    
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Setup branch name 
+        run: |
+          # Strip git ref prefix from version
+          echo "BRANCH_NAME=$(echo ${{ github.ref }} | sed -e 's,.*/\(.*\),\1,')" >> $GITHUB_ENV
